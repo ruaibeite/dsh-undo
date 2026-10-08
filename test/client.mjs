@@ -53,7 +53,9 @@ const clientModule = loaded.factory((specifier) => {
   throw new Error(`unexpected require: ${specifier}`);
 });
 check('导出 apply / inject / name', ['apply', 'inject', 'name'].every((key) => clientModule[key] !== undefined));
-check('只注入 slots 与 commandUi', JSON.stringify(clientModule.inject) === JSON.stringify(['slots', 'commandUi']), JSON.stringify(clientModule.inject));
+check('注入 slots / commandUi / remote.commands（后者是真实点击时抓到的必需项）',
+  JSON.stringify(clientModule.inject) === JSON.stringify(['slots', 'commandUi', 'remote', 'remote.commands']),
+  JSON.stringify(clientModule.inject));
 
 console.log('\n=== 4. 注册进消息动作行 ===');
 const seen = [];

@@ -1,6 +1,6 @@
 {
   "name": "@ruaibeite/dsh-undo",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Turn-level file undo for DeepSeek Harness: every write and edit is snapshotted before it lands, and the model (undo tool), the human (/undo command) or the GUI button in the message action row can roll back all files a turn changed.",
   "license": "MIT",
   "type": "module",

@@ -25,8 +25,16 @@ window.__ModuleLoader__.load({
 
     const name = 'tool-undo-client';
 
-    /** 客户端服务：插槽注册表，以及用来执行宿主命令的命令 UI。 */
-    const inject = ['slots', 'commandUi'];
+    /**
+     * 客户端服务：插槽注册表，以及用来执行宿主命令的命令 UI。
+     *
+     * `remote` / `remote.commands` 也在列表里：cordis 的严格服务访问会把
+     * `ctx.commandUi.execute()` 内部的 `ctx.remote.commands` 访问归到**调用方**
+     * （也就是本插件）头上，不声明就会抛
+     * `cannot get property "remote.commands" without inject`
+     * —— 这个错是真实点击时抓到的，官方 ui-commands 客户端同样声明了这两项。
+     */
+    const inject = ['slots', 'commandUi', 'remote', 'remote.commands'];
 
     /** 按钮外观：与消息动作行里其它图标按钮一致的极简样式。 */
     const BUTTON_STYLE = {
