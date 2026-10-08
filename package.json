@@ -1,17 +1,21 @@
 {
   "name": "@ruaibeite/dsh-undo",
-  "version": "0.3.0",
-  "description": "Turn-level file undo for DeepSeek Harness: every write and edit is snapshotted before it lands, and either the model (undo tool) or the human (/undo command) can roll back all files a turn changed.",
+  "version": "0.4.0",
+  "description": "Turn-level file undo for DeepSeek Harness: every write and edit is snapshotted before it lands, and the model (undo tool), the human (/undo command) or the GUI button in the message action row can roll back all files a turn changed.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
     ".": {
       "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./client/client.js"
     }
   },
   "files": [
     "lib/",
+    "client/",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
@@ -36,12 +40,21 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node test/roundtrip.mjs",
-    "test:integration": "node test/cordis-integration.mjs"
+    "test": "node test/roundtrip.mjs && node test/client.mjs",
+    "test:integration": "node test/cordis-integration.mjs",
+    "test:client": "node test/client.mjs"
   },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-commands"
+      ]
     }
   },
   "peerDependencies": {
