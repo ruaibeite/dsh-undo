@@ -74,6 +74,7 @@ mod.apply(mockCtx, {
   maxFileBytes: 1024 * 1024,
   onlyToolWrites: false,
   sessionScanEvents: 400,
+  listFilesPerTurn: 5,
   debug: false,
 });
 check('导出了 name/apply/inject/Config', ['name', 'apply', 'inject', 'Config'].every((key) => mod[key] !== undefined));
@@ -187,6 +188,14 @@ for (let i = 0; i < 45; i++) {
   await fire('fs/write-intent', bulk, `bulk-${i}`);
 }
 check('快照数被限制在 maxSnapshots=40', readIdx().length === 40, `实际 ${readIdx().length}`);
+
+console.log('\n=== 10. list 的输出上限（一次真实调用曾打印 141 个路径）===');
+const bulkList = await runTool({ action: 'list', limit: 3 });
+const detailLines = bulkList.message.split('\n').filter((line) => /^ {6}\S/.test(line) && !line.includes('…还有'));
+check('默认每轮只列 listFilesPerTurn=5 条', detailLines.length <= 15, `实际 ${detailLines.length} 条`);
+check('其余文件用省略行汇总', bulkList.message.includes('…还有'), bulkList.message.split('\n').find((l) => l.includes('…还有')) ?? '(无)');
+const oneTurn = await runTool({ action: 'list', turn: '1' });
+check('list + turn 给出该轮全量清单（不再省略）', oneTurn.ok === true && oneTurn.message.includes('第 1 轮') && !oneTurn.message.includes('…还有'), oneTurn.message.split('\n')[0]);
 
 console.log(`\n=== 结果：${passed} 通过 / ${failed} 失败 ===`);
 rmSync(HOME, { recursive: true, force: true });

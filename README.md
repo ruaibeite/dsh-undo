@@ -93,6 +93,7 @@ $DSH_HOME/undo/
 | `maxFileBytes` | 4194304 | 超过此大小的文件不快照 |
 | `onlyToolWrites` | false | `true` 时只快照带工具 actor 的写入 |
 | `sessionScanEvents` | 400 | 为定位轮次边界而扫描的会话日志尾部条数 |
+| `listFilesPerTurn` | 10 | `action: "list"` 每轮最多列出多少条文件，其余用一行省略汇总（`list` 带上 `turn` 则打印该轮全量清单） |
 | `debug` | false | `true` 时把每个事件写入 `$DSH_HOME/undo/debug.log` |
 
 ## 限制（如实说明）
