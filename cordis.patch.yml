@@ -1,0 +1,12 @@
+# dsh bundle patch: inserts this plugin into a profile's layer stack.
+#
+# `dsh plugin --profile <name> add <package>` reconciles `dsh.profile.bundles`
+# against installed packages and, seeing this declaration, appends the package
+# to the bundle stack. The profile boot then merges THIS patch (a single
+# `insert` of the plugin row), so no profile file needs editing by hand.
+- insert:
+    - id: tool-undo
+      name: '@ruaibeite/dsh-undo'
+      config:
+        maxSnapshots: 300
+        maxFileBytes: 4194304

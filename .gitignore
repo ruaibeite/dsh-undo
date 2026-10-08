@@ -1,0 +1,13 @@
+node_modules/
+.DS_Store
+*.log
+
+# test scratch space (isolated DSH_HOME / workspaces the tests create)
+.test-home/
+.test-work/
+.cordis-test-home/
+.cordis-test-work/
+.e2e-work/
+
+# npm pack 产物
+*.tgz
