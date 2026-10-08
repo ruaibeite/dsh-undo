@@ -67,6 +67,20 @@ const mockCtx = {
   on: (event, handler) => { (STATE.handlers[event] ??= []).push(handler); },
 };
 
+/** 假命令注册表：记录注册进来的命令，occupiedNames 可模拟「名字已被别的插件占用」。 */
+const COMMANDS = { registered: [], occupiedNames: [] };
+mockCtx.get = (name) => (name === 'commands'
+  ? {
+      register: (definition) => {
+        if (COMMANDS.occupiedNames.includes(definition.name)) {
+          throw new Error(`command "${definition.name}" is already registered`);
+        }
+        COMMANDS.registered.push(definition);
+        return () => {};
+      }
+    }
+  : undefined);
+
 console.log('=== 0. 加载与注册 ===');
 const mod = await import('../lib/index.js');
 mod.apply(mockCtx, {
@@ -184,8 +198,9 @@ check('$DSH_HOME 内的写入被排除', readIdx().length === beforeHome, `${bef
 console.log('\n=== 9. 容量上限（maxSnapshots=40）===');
 for (let i = 0; i < 45; i++) {
   const bulk = join(WORK, `bulk-${i}.txt`);
-  writeFileSync(bulk, `内容 ${i}\n`);
+  // 真实顺序：intent 钩子在落盘之前触发，此刻文件还不存在 → 记成「新建」。
   await fire('fs/write-intent', bulk, `bulk-${i}`);
+  writeFileSync(bulk, `内容 ${i}\n`);
 }
 check('快照数被限制在 maxSnapshots=40', readIdx().length === 40, `实际 ${readIdx().length}`);
 
@@ -196,6 +211,41 @@ check('默认每轮只列 listFilesPerTurn=5 条', detailLines.length <= 15, `�
 check('其余文件用省略行汇总', bulkList.message.includes('…还有'), bulkList.message.split('\n').find((l) => l.includes('…还有')) ?? '(无)');
 const oneTurn = await runTool({ action: 'list', turn: '1' });
 check('list + turn 给出该轮全量清单（不再省略）', oneTurn.ok === true && oneTurn.message.includes('第 1 轮') && !oneTurn.message.includes('…还有'), oneTurn.message.split('\n')[0]);
+
+console.log('\n=== 11. 人工入口：/undo 命令（与工具共用同一套逻辑）===');
+check('注册了 /undo 命令', COMMANDS.registered.length === 1 && COMMANDS.registered[0].name === 'undo', `已注册: ${COMMANDS.registered.map((c) => c.name).join(',') || '无'}`);
+const cmd = COMMANDS.registered[0];
+check('命令带 description 与输入提示', typeof cmd.description === 'string' && cmd.description.length > 0 && typeof cmd.input?.hint === 'string', JSON.stringify(cmd.input));
+const cmdList = await cmd.handler({ rawInput: '' });
+check('/undo（无参数）= 列出轮次', cmdList.kind === 'success' && cmdList.text.includes('轮'), String(cmdList.text).split('\n')[0]);
+const beforeCmdDry = readIdx().length;
+const cmdDry = await cmd.handler({ rawInput: 'dry 1' });
+check('/undo dry 1 = 预演且不写盘', cmdDry.kind === 'success' && cmdDry.text.includes('预演') && readIdx().length === beforeCmdDry, String(cmdDry.text).split('\n')[0]);
+const cmdRestore = await cmd.handler({ rawInput: 'restore 1' });
+check('/undo restore 1 = 通过命令整轮回退（删除本轮新建）', cmdRestore.kind === 'success' && cmdRestore.text.includes('删除') && !existsSync(join(WORK, 'bulk-44.txt')), String(cmdRestore.text).split('\n')[0]);
+const cmdBad = await cmd.handler({ rawInput: 'restore 99' });
+check('越界轮次经命令返回 error 结果', cmdBad.kind === 'error', String(cmdBad.text).split('\n')[0]);
+
+console.log('\n=== 12. 名字被占用时降级为 /undo-turn（不能因此加载失败）===');
+const STATE2 = { handlers: {}, tool: undefined };
+const COMMANDS2 = { registered: [] };
+const mockCtx2 = {
+  ...mockCtx,
+  get: (name) => (name === 'commands'
+    ? {
+        register: (definition) => {
+          if (definition.name === 'undo') throw new Error('command "undo" is already registered');
+          COMMANDS2.registered.push(definition);
+          return () => {};
+        }
+      }
+    : undefined),
+  tools: { register: (definition) => { STATE2.tool = definition; return () => {}; } },
+  on: (event, handler) => { (STATE2.handlers[event] ??= []).push(handler); },
+};
+mod.apply(mockCtx2, { maxSnapshots: 5, maxFileBytes: 1024, onlyToolWrites: false, sessionScanEvents: 50, listFilesPerTurn: 3, debug: false });
+check('名字被占用时改注册 /undo-turn', COMMANDS2.registered.length === 1 && COMMANDS2.registered[0].name === 'undo-turn', COMMANDS2.registered.map((c) => c.name).join(',') || '(无)');
+check('工具不受影响，仍然注册', STATE2.tool?.name === 'undo');
 
 console.log(`\n=== 结果：${passed} 通过 / ${failed} 失败 ===`);
 rmSync(HOME, { recursive: true, force: true });
